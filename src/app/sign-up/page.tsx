@@ -14,8 +14,11 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { signUp } from "@/lib/auth-client";
+import { useRouter } from "next/navigation";
 
 export default function SignUp() {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -34,9 +37,34 @@ export default function SignUp() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Handled by auth provider or submission action
+    setError("");
+    setLoading(true);
+
+    try {
+      const result = await signUp.email({
+        email: formData.email,
+        password: formData.password,
+        name: formData.name,
+        callbackURL: "/dashboard",
+      });
+
+      if (result.error) {
+        setError(result.error.message || "Failed to sign up");
+        return;
+      }
+
+      router.push("/dashboard");
+      router.refresh();
+    } catch (err) {
+      console.error("Sign up error:", err);
+      setError(
+        err instanceof Error ? err.message : "An unexpected error occurred. Please try again later."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

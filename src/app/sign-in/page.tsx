@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { LogIn, Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
 import {
   Card,
@@ -14,13 +15,54 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { signIn } from "@/lib/auth-client";
 
 export default function SignIn() {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
+
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Handled by auth provider or submission action
+    setError("");
+    setLoading(true);
+
+    try {
+      const result = await signIn.email({
+        email: formData.email,
+        password: formData.password,
+        callbackURL: "/dashboard",
+      });
+
+      if (result.error) {
+        setError(result.error.message || "Invalid email or password");
+        return;
+      }
+
+      router.push("/dashboard");
+      router.refresh();
+    } catch (err) {
+      console.error("Sign in error:", err);
+      setError(
+        err instanceof Error ? err.message : "An unexpected error occurred. Please try again later."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -44,6 +86,12 @@ export default function SignIn() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           <CardContent className="space-y-4 px-6">
+            {error && (
+              <div className="rounded-lg bg-destructive/15 p-3 text-sm text-destructive font-medium border border-destructive/20">
+                {error}
+              </div>
+            )}
+
             {/* Email field */}
             <div className="space-y-2">
               <Label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -53,8 +101,11 @@ export default function SignIn() {
                 <Mail className="absolute left-3 size-4 text-muted-foreground pointer-events-none" />
                 <Input
                   id="email"
+                  name="email"
                   type="email"
                   placeholder="you@example.com"
+                  value={formData.email}
+                  onChange={handleChange}
                   required
                   className="pl-9.5 h-10 text-sm placeholder:text-muted-foreground/60 transition-colors"
                 />
@@ -78,8 +129,11 @@ export default function SignIn() {
                 <Lock className="absolute left-3 size-4 text-muted-foreground pointer-events-none" />
                 <Input
                   id="password"
+                  name="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
+                  value={formData.password}
+                  onChange={handleChange}
                   required
                   className="pl-9.5 pr-10 h-10 text-sm placeholder:text-muted-foreground/60 transition-colors"
                 />
@@ -103,10 +157,11 @@ export default function SignIn() {
             <Button
               type="submit"
               size="lg"
+              disabled={loading}
               className="w-full h-10 font-medium text-sm shadow-sm transition-all hover:shadow-md cursor-pointer"
             >
-              Sign In
-              <ArrowRight className="ml-2 size-4" />
+              {loading ? "Signing in..." : "Sign In"}
+              {!loading && <ArrowRight className="ml-2 size-4" />}
             </Button>
 
             <p className="text-center text-sm text-muted-foreground">
